@@ -1,4 +1,4 @@
-import {test} from '@playwright/test';
+import {test, Page} from '@playwright/test';
 
 let borrowerNumber = 0
 
@@ -16,19 +16,19 @@ test('Fetch Borrowers', async ({page}) => {
     await page.getByRole('textbox', {name: 'Password:'}).fill(process.env.PASSWORD);
     await page.getByRole('button', {name: 'Login'}).click();
     await page.goto(`http://${process.env.HOST}/liberty/circulation/borrowers/browse.do`)
-    await page.getByRole('link', {name: '1', exact: true}).click();
+    const navMsg = await page.locator('#navigation_message a').allInnerTexts()
+    console.log(navMsg)
     borrowerNumber = 1
-    await nextBorrower(page)
-    await nextBorrower(page)
-    await nextBorrower(page)
-    await nextBorrower(page)
-
-    // Print text from specific elements (e.g., all table cells)
-    const cells = await page.locator('tr').allInnerTexts();
-    console.log(cells
-      .filter(cell => cell.includes(':'))
-      .map(cell => cell.split(':\t').map(part => part.trim()))
-      .filter(row => row[1].length > 1));
+    await page.getByRole('link', {name: `${borrowerNumber}`, exact: true}).click();
+    for (let i=0;i<5;i++) {
+      // Print text from specific elements (e.g., all table cells)
+      const cells = await page.locator('tr').allInnerTexts();
+      console.log(cells
+        .filter(cell => cell.includes(':'))
+        .map(cell => cell.split(':\t').map(part => part.trim()))
+        .filter(row => row[1].length > 1));
+      await nextBorrower(page)
+    }
   } finally {
     await page.getByRole('button', {name: 'Logout'}).click();
   }
