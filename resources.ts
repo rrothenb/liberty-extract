@@ -23,7 +23,7 @@ test('Fetch Resources', async ({page}) => {
     resourceNumber = 1
     await page.getByRole('link', {name: `${resourceNumber}`, exact: true}).click()
     const resources = []
-    for (let i=0;i<5;i++) {
+    for (let i=0;i<50;i++) {
       // Print text from specific elements (e.g., all table cells)
       const cells = await page.locator('tr').allInnerTexts()
       resources.push(cells
@@ -33,10 +33,10 @@ test('Fetch Resources', async ({page}) => {
         .reduce((acc, row) => {
           acc[row[0]] = row[1]
           return acc
-        }, {}))
+        }, {} as Record<string, string>))
       await nextResource(page)
     }
-  console.log(resources.map(cell => ({
+    const csv = new ObjectsToCsv(resources.map(cell => ({
       id: cell.ID,
       title: cell.Title,
       author: cell.Author,
@@ -44,7 +44,7 @@ test('Fetch Resources', async ({page}) => {
       isbn: cell.ISBN,
       notes: cell.Notes,
     })))
-
+    await csv.toDisk('resources.csv')
   } finally {
     await page.getByRole('button', {name: 'Logout'}).click()
   }

@@ -1,4 +1,5 @@
 import {test, Page} from '@playwright/test'
+import ObjectsToCsv from 'objects-to-csv'
 
 let borrowerNumber = 0
 
@@ -11,9 +12,9 @@ test('Fetch Borrowers', async ({page}) => {
     await page.goto(`http://${process.env.HOST}/liberty/libraryHome.do`)
     await page.getByRole('button', {name: 'Login'}).click()
     await page.getByRole('textbox', {name: 'Username:'}).click()
-    await page.getByRole('textbox', {name: 'Username:'}).fill(process.env.USERNAME)
+    await page.getByRole('textbox', {name: 'Username:'}).fill(process.env.USERNAME!)
     await page.getByRole('textbox', {name: 'Password:'}).click()
-    await page.getByRole('textbox', {name: 'Password:'}).fill(process.env.PASSWORD)
+    await page.getByRole('textbox', {name: 'Password:'}).fill(process.env.PASSWORD!)
     await page.getByRole('button', {name: 'Login'}).click()
     await page.goto(`http://${process.env.HOST}/liberty/circulation/borrowers/browse.do`)
     await page.locator('#navigation_message a').click()
@@ -32,15 +33,16 @@ test('Fetch Borrowers', async ({page}) => {
         .reduce((acc, row) => {
           acc[row[0]] = row[1]
           return acc
-        }, {}))
+        }, {} as Record<string, string>))
       await nextBorrower(page)
     }
-  console.log(borrowers.map(cell => ({
+    const csv = new ObjectsToCsv(borrowers.map(cell => ({
       id: cell.Alias,
       name: cell.Name,
       email: cell['Email address'],
       phone: cell.Mobile,
     })).filter(borrower => borrower.name))
+    await csv.toDisk('borrowers.csv')
 
   } finally {
     await page.getByRole('button', {name: 'Logout'}).click()
