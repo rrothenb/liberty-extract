@@ -1,5 +1,7 @@
 import {test, Page} from '@playwright/test'
 import ObjectsToCsv from 'objects-to-csv'
+import { parse } from 'date-fns'
+import { fr } from 'date-fns/locale'
 
 let borrowerNumber = 0
 
@@ -19,11 +21,15 @@ test('Fetch Borrowers', async ({page}) => {
     await page.goto(`http://${process.env.HOST}/liberty/circulation/borrowers/browse.do`)
     await page.locator('#navigation_message a').click()
     const navMsg = await page.locator('#navigation_message').allInnerTexts()
-    console.log(navMsg[0].split(' ')[2])
+    const numBorrowers = Number(navMsg[0].split(' ')[2])
+    console.log(numBorrowers)
     borrowerNumber = 1
     await page.getByRole('link', {name: `${borrowerNumber}`, exact: true}).click()
     const borrowers = []
-    for (let i=0;i<50;i++) {
+    for (let i=0;i<900;i++) {
+      if (borrowerNumber % 100 == 0) {
+        console.log(`Processing borrower ${borrowerNumber}`)
+      }
       // Print text from specific elements (e.g., all table cells)
       const cells = await page.locator('tr').allInnerTexts()
       borrowers.push(cells
@@ -36,11 +42,16 @@ test('Fetch Borrowers', async ({page}) => {
         }, {} as Record<string, string>))
       await nextBorrower(page)
     }
+    console.log(`Writing ${borrowers.length} borrowers to CSV`)
     const csv = new ObjectsToCsv(borrowers.map(cell => ({
       id: cell.Alias,
       name: cell.Name,
       email: cell['Email address'],
       phone: cell.Mobile,
+      gender: cell.Gender,
+      address: cell.Address,
+      postcode: cell.Postcode,
+      status: cell['Expiry date'] ? parse(cell['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }) > new Date() ? 'active' : 'inactive' : null
     })).filter(borrower => borrower.name))
     await csv.toDisk('borrowers.csv')
 

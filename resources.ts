@@ -23,9 +23,12 @@ test('Fetch Resources', async ({page}) => {
     resourceNumber = 1
     await page.getByRole('link', {name: `${resourceNumber}`, exact: true}).click()
     const resources = []
-    for (let i=0;i<50;i++) {
+    for (let i=0;i<5;i++) {
       // Print text from specific elements (e.g., all table cells)
       const cells = await page.locator('tr').allInnerTexts()
+      console.dir(cells
+        .filter(cell => cell.includes(':') || cell.match(/^[0-9]+\n/))
+        .map(cell => cell.split(/:\t|\n/).map(part => part.trim())), { depth: 10 })
       resources.push(cells
         .filter(cell => cell.includes(':'))
         .map(cell => cell.split(':\t').map(part => part.trim()))
@@ -36,6 +39,7 @@ test('Fetch Resources', async ({page}) => {
         }, {} as Record<string, string>))
       await nextResource(page)
     }
+    console.dir(resources, { depth: 10 })
     const csv = new ObjectsToCsv(resources.map(cell => ({
       id: cell.ID,
       title: cell.Title,
