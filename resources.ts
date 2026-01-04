@@ -23,15 +23,15 @@ test('Fetch Resources', async ({page}) => {
     resourceNumber = 1
     await page.getByRole('link', {name: `${resourceNumber}`, exact: true}).click()
     const resources = []
-    for (let i=0;i<5;i++) {
+    for (let i=0;i<900;i++) {
+      if (resourceNumber % 100 == 0) {
+        console.log(`Processing resource ${resourceNumber}`)
+      }
       // Print text from specific elements (e.g., all table cells)
       const cells = await page.locator('tr').allInnerTexts()
-      console.dir(cells
-        .filter(cell => cell.includes(':') || cell.match(/^[0-9]+\n/))
-        .map(cell => cell.split(/:\t|\n/).map(part => part.trim())), { depth: 10 })
       resources.push(cells
-        .filter(cell => cell.includes(':'))
-        .map(cell => cell.split(':\t').map(part => part.trim()))
+        .filter(cell => cell.includes(':') || cell.match(/^[0-9]+\n/))
+        .map(cell => cell.split(/:\t|\n/).map(part => part.trim()))
         .filter(row => row[1].length > 1)
         .reduce((acc, row) => {
           acc[row[0]] = row[1]
@@ -39,7 +39,7 @@ test('Fetch Resources', async ({page}) => {
         }, {} as Record<string, string>))
       await nextResource(page)
     }
-    console.dir(resources, { depth: 10 })
+    console.log(`Writing ${resources.length} resources to CSV`)
     const csv = new ObjectsToCsv(resources.map(cell => ({
       id: cell.ID,
       title: cell.Title,
@@ -47,6 +47,19 @@ test('Fetch Resources', async ({page}) => {
       type: cell.GMD,
       isbn: cell.ISBN,
       notes: cell.Notes,
+      genres: cell.Genres,
+      date: cell.Date,
+      abstract: cell.Abstract,
+      subjects: cell.Subjects,
+      description: cell.Description,
+      publisher: cell.Publisher,
+      place: cell.Place,
+      classification: cell.Classification,
+      barcode:
+        cell['1'] &&
+        cell['1'].split('\t') &&
+        cell['1'].split('\t').length > 0 &&
+        cell['1'].split('\t')[0] ? cell['1'].split('\t')[0] : null,
     })))
     await csv.toDisk('resources.csv')
   } finally {
