@@ -6,7 +6,10 @@ import { fr } from 'date-fns/locale'
 let borrowerNumber = 0
 
 async function nextBorrower (page: Page) {
-  await page.getByTitle(`Item ${++borrowerNumber}`).click()
+  const nextButton = page.getByTitle(`Item ${(++borrowerNumber).toLocaleString()}`)
+  if (await nextButton.isEnabled()) {
+    await nextButton.click()
+  }
 }
 
 test('Fetch Borrowers', async ({page}) => {
@@ -26,7 +29,7 @@ test('Fetch Borrowers', async ({page}) => {
     borrowerNumber = 1
     await page.getByRole('link', {name: `${borrowerNumber}`, exact: true}).click()
     const borrowers = []
-    for (let i=0;i<900;i++) {
+    for (let i=0;i<numBorrowers;i++) {
       if (borrowerNumber % 100 == 0) {
         console.log(`Processing borrower ${borrowerNumber}`)
       }
