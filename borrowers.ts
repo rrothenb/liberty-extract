@@ -54,6 +54,9 @@ test('Fetch Borrowers', async ({page}) => {
       gender: cell.Gender,
       address: cell.Address,
       postcode: cell.Postcode,
+      borrowerType: cell['Borrower Type'].split('\n')[0],
+      expiryDate: cell['Expiry date'],
+      memberSince: cell['Member since'],
       status: cell['Expiry date'] ? parse(cell['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }) > new Date() ? 'active' : 'inactive' : null
     })).filter(borrower => borrower.name))
     await csv.toDisk('borrowers.csv')
