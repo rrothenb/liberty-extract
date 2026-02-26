@@ -46,7 +46,7 @@ test('Fetch Borrowers', async ({page}) => {
       await nextBorrower(page)
     }
     console.log(`Writing ${borrowers.length} borrowers to CSV`)
-    const csv = new ObjectsToCsv(borrowers.map(cell => ({
+    const csv = new ObjectsToCsv(borrowers.filter(borrower => borrower.Name).filter(borrower => borrower['Expiry date'] && parse(borrower['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }).getFullYear() >= 2020).map(cell => ({
       id: cell.Alias,
       name: cell.Name,
       email: cell['Email address'],
@@ -58,7 +58,7 @@ test('Fetch Borrowers', async ({page}) => {
       expiryDate: cell['Expiry date'],
       memberSince: cell['Member since'],
       status: cell['Expiry date'] ? parse(cell['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }) > new Date() ? 'active' : 'inactive' : null
-    })).filter(borrower => borrower.name))
+    })))
     await csv.toDisk('borrowers.csv')
 
   } finally {
