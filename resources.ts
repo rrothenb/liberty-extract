@@ -4,7 +4,10 @@ import ObjectsToCsv from 'objects-to-csv'
 let resourceNumber = 0
 
 async function nextResource (page: Page) {
-  await page.getByTitle(`Item ${++resourceNumber}`).click()
+  const nextButton = page.getByTitle(`Item ${(++resourceNumber).toLocaleString()}`)
+  if (await nextButton.isEnabled()) {
+    await nextButton.click()
+  }
 }
 
 test('Fetch Resources', async ({page}) => {
@@ -19,11 +22,12 @@ test('Fetch Resources', async ({page}) => {
     await page.goto(`http://${process.env.HOST}/liberty/cataloguing/biblios/browse.do`)
     await page.locator('#navigation_message a').click()
     const navMsg = await page.locator('#navigation_message').allInnerTexts()
-    console.log(navMsg[0].split(' ')[2])
+    const numResources = Number(navMsg[0].split(' ')[2])
+    console.log(numResources)
     resourceNumber = 1
     await page.getByRole('link', {name: `${resourceNumber}`, exact: true}).click()
     const resources = []
-    for (let i=0;i<900;i++) {
+    for (let i=0;i<numResources;i++) {
       if (resourceNumber % 100 == 0) {
         console.log(`Processing resource ${resourceNumber}`)
       }
