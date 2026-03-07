@@ -10,6 +10,20 @@ async function nextResource (page: Page) {
   }
 }
 
+function getBarcodes(resource: any): string[] {
+  const barcodes: string[] = []
+  let index = 1
+  while (resource[`${index}`]) {
+    const value = resource[`${index}`]
+    barcodes.push(value.split('\t') &&
+      value.split('\t').length > 0 &&
+      value.split('\t')[0] ? value.split('\t')[0] : null,
+    )
+    index++
+  }
+  return barcodes
+}
+
 test('Fetch Resources', async ({page}) => {
   try {
     await page.goto(`http://${process.env.HOST}/liberty/libraryHome.do`)
@@ -59,12 +73,8 @@ test('Fetch Resources', async ({page}) => {
       publisher: cell.Publisher,
       place: cell.Place,
       classification: cell.Classification,
-      barcode:
-        cell['1'] &&
-        cell['1'].split('\t') &&
-        cell['1'].split('\t').length > 0 &&
-        cell['1'].split('\t')[0] ? cell['1'].split('\t')[0] : null,
-    })))
+      barcodes: getBarcodes(cell).join('|')
+    })).filter(resource => resource.barcodes.length != 0))
     await csv.toDisk('resources.csv')
   } finally {
     await page.getByRole('button', {name: 'Logout'}).click()
