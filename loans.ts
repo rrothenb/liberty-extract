@@ -1,12 +1,20 @@
 import {test, Page, selectors} from '@playwright/test'
 import ObjectsToCsv from 'objects-to-csv'
-import { parse } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import {parse} from 'date-fns'
+import {fr} from 'date-fns/locale'
 
-async function nextLoan (page: Page) {
+async function nextLoan(page: Page) {
   const nextButton = page.locator('#navigation_next')
   if (await nextButton.isEnabled()) {
     await nextButton.click()
+  }
+}
+
+const borrowerIds: Record<string,string> = {}
+async function populateBorrowerIds(loans: any[]) {
+  for (const url of loans.map(loan => loan.borrowerId))
+  if (!borrowerIds[url]) {
+    borrowerIds[url] = `thing based on ${url}`
   }
 }
 
@@ -25,7 +33,7 @@ test('Fetch Loans', async ({page}) => {
     const numLoans = Number(navMsg[0].split(' ')[2])
     console.log(numLoans)
     const loans: any[] = []
-    for (let i=0;i<4;i++) {
+    for (let i = 0; i < 4; i++) {
       for (const row of await page
         .locator('#contentContainer')
         .locator('tbody')
@@ -38,14 +46,15 @@ test('Fetch Loans', async ({page}) => {
           due: text[3].split('\n')[1],
           borrowerName: text[4],
           borrowerId: await row.locator('td').nth(4).locator('a').getAttribute('href'),
-          status: parse(text[3].split('\n')[1], `hh:mm a 'on' MMMM dd, yyyy`, new Date(), { locale: fr }) > new Date() ? 'out' : 'overdue'
+          status: parse(text[3].split('\n')[1], `hh:mm a 'on' MMMM dd, yyyy`, new Date(), {locale: fr}) > new Date() ? 'out' : 'overdue'
         })
       }
       await nextLoan(page)
     }
     console.log(`Writing ${loans.length} loans to CSV`)
     console.log(loans)
-    const csv = new ObjectsToCsv(loans)
+    await populateBorrowerIds(loans)
+    const csv = new ObjectsToCsv(loans.map(loan => ({...loan, borrowerId: borrowerIds[loan.borrowerId]})))
     await csv.toDisk('loans.csv')
 
   } finally {
