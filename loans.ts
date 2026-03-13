@@ -11,17 +11,18 @@ async function nextLoan(page: Page) {
 }
 
 const borrowerIds: Record<string,string> = {}
-async function populateBorrowerIds(loans: any[]) {
+async function populateBorrowerIds(loans: any[], page: Page) {
   for (const url of loans.map(loan => loan.borrowerId))
   if (!borrowerIds[url]) {
-    borrowerIds[url] = `thing based on ${url}`
+    await page.goto(url)
+    borrowerIds[url] = (await page.locator('#alias').allTextContents())[0].trim()
   }
 }
 
 test('Fetch Loans', async ({page}) => {
   try {
     selectors.setTestIdAttribute('data-resultindex')
-    await page.goto(`http://${process.env.HOST}/liberty/libraryHome.do`)
+    await page.goto(`/liberty/libraryHome.do`)
     await page.getByRole('button', {name: 'Login'}).click()
     await page.getByRole('textbox', {name: 'Username:'}).click()
     await page.getByRole('textbox', {name: 'Username:'}).fill(process.env.USERNAME!)
@@ -53,7 +54,7 @@ test('Fetch Loans', async ({page}) => {
     }
     console.log(`Writing ${loans.length} loans to CSV`)
     console.log(loans)
-    await populateBorrowerIds(loans)
+    await populateBorrowerIds(loans, page)
     const csv = new ObjectsToCsv(loans.map(loan => ({...loan, borrowerId: borrowerIds[loan.borrowerId]})))
     await csv.toDisk('loans.csv')
 
