@@ -46,19 +46,22 @@ test('Fetch Borrowers', async ({page}) => {
       await nextBorrower(page)
     }
     console.log(`Writing ${borrowers.length} borrowers to CSV`)
-    const csv = new ObjectsToCsv(borrowers.filter(borrower => borrower.Name).filter(borrower => borrower['Expiry date'] && parse(borrower['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }).getFullYear() >= 2020).map(cell => ({
-      id: cell.Alias,
-      name: cell.Name,
-      email: cell['Email address'],
-      phone: cell.Mobile,
-      gender: cell.Gender,
-      address: cell.Address,
-      postcode: cell.Postcode,
-      borrowerType: cell['Borrower Type'].split('\n')[0],
-      expiryDate: cell['Expiry date'],
-      memberSince: cell['Member since'],
-      status: cell['Expiry date'] ? parse(cell['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }) > new Date() ? 'active' : 'inactive' : null
-    })))
+    const csv = new ObjectsToCsv(borrowers.filter(borrower => borrower.Name).filter(borrower => borrower['Expiry date'] && parse(borrower['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }).getFullYear() >= 2020).map(cell => {
+      const expiryDate = parse(cell['Expiry date'], `MMMM dd, yyyy`, new Date(), {locale: fr})
+      const memberSince = parse(cell['Member since'], `MMMM dd, yyyy`, new Date(), {locale: fr})
+      return {
+        id: cell.Alias,
+        name: cell.Name,
+        email: cell['Email address'],
+        phone: cell.Mobile,
+        gender: cell.Gender,
+        address: cell.Address,
+        postcode: cell.Postcode,
+        borrowerType: cell['Borrower Type'].split('\n')[0],
+        expiryDate: expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        memberSince: memberSince.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        status: expiryDate > new Date() ? 'active' : 'inactive'
+      }}))
     await csv.toDisk('borrowers.csv')
 
   } finally {

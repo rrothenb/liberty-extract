@@ -40,14 +40,18 @@ test('Fetch Loans', async ({page}) => {
         .locator('tbody')
         .locator('tr').all()) {
         const text = await row.locator('td').allInnerTexts()
+        const checkoutDate = parse(text[3].split('\n')[0], `hh:mm a 'on' MMMM dd, yyyy`, new Date(), {locale: fr})
+        const dueDate = parse(text[3].split('\n')[1], `hh:mm a 'on' MMMM dd, yyyy`, new Date(), {locale: fr})
+        const status = dueDate > new Date() ? 'out' : 'overdue'
         loans.push({
+          id: `${text[0]}:${status}`,
           barcode: text[0],
           title: text[1],
-          checkout: text[3].split('\n')[0],
-          due: text[3].split('\n')[1],
+          checkoutDate: checkoutDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          dueDate: dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
           borrowerName: text[4],
           borrowerId: await row.locator('td').nth(4).locator('a').getAttribute('href'),
-          status: parse(text[3].split('\n')[1], `hh:mm a 'on' MMMM dd, yyyy`, new Date(), {locale: fr}) > new Date() ? 'out' : 'overdue'
+          status
         })
       }
       await nextLoan(page)
