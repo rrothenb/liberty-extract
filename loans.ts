@@ -19,6 +19,13 @@ async function populateBorrowerIds(loans: any[], page: Page) {
   }
 }
 
+function generateId(): string {
+  const d1 = Array.from({length: 5}, () => Math.floor(Math.random() * 10)).join('');
+  const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  const d2 = Array.from({length: 4}, () => Math.floor(Math.random() * 10)).join('');
+  return `L${d1}${letter}${d2}`;
+}
+
 test('Fetch Loans', async ({page}) => {
   try {
     selectors.setTestIdAttribute('data-resultindex')
@@ -42,16 +49,14 @@ test('Fetch Loans', async ({page}) => {
         const text = await row.locator('td').allInnerTexts()
         const checkoutDate = parse(text[3].split('\n')[0], `hh:mm a 'on' MMMM dd, yyyy`, new Date(), {locale: fr})
         const dueDate = parse(text[3].split('\n')[1], `hh:mm a 'on' MMMM dd, yyyy`, new Date(), {locale: fr})
-        const status = dueDate > new Date() ? 'out' : 'overdue'
         loans.push({
-          id: `${text[0]}:${status}`,
+          id: generateId(),
           barcode: text[0],
           title: text[1],
           checkoutDate: checkoutDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
           dueDate: dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
           borrowerName: text[4],
           borrowerId: await row.locator('td').nth(4).locator('a').getAttribute('href'),
-          status
         })
       }
       await nextLoan(page)

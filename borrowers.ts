@@ -60,7 +60,6 @@ test('Fetch Borrowers', async ({page}) => {
         borrowerType: cell['Borrower Type'].split('\n')[0],
         expiryDate: expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
         memberSince: memberSince.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        status: expiryDate > new Date() ? 'active' : 'inactive'
       }}))
     await csv.toDisk('borrowers.csv')
 
