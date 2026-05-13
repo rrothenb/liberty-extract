@@ -33,15 +33,39 @@ test('Fetch Resources', async ({page}) => {
     await page.getByRole('textbox', {name: 'Password:'}).click()
     await page.getByRole('textbox', {name: 'Password:'}).fill(process.env.PASSWORD!)
     await page.getByRole('button', {name: 'Login'}).click()
+    // first get box set relations
+    await page.goto(`http://${process.env.HOST}/liberty/cataloguing/biblios/resourceBoxes/browseSearchRoute.do?_open=1`)
+    await page.locator('#issueSearchForm_queryTerm').press('Enter')
+    await page.locator('#navigation_message a').click()
+    let navMsg = await page.locator('#navigation_message').allInnerTexts()
+    console.log(navMsg)
+    let numBoxsets = Number(navMsg[0].split(' ')[2])
+    console.log(numBoxsets)
+    let allItemUrls: string[] = []
+    console.log('collecting links...')
+    while (numBoxsets > 0) {
+      const itemUrls = await page
+        .locator('tr:nth-child(even) td:first-child a')
+        .evaluateAll(els => (els as HTMLAnchorElement[]).map(e => e.href))
+      console.log(itemUrls.length)
+      allItemUrls = allItemUrls.concat(itemUrls)
+      numBoxsets -= 20
+      if (numBoxsets > 0) {
+        await page.locator('#navigation_next').click()
+      }
+    }
+    console.log(allItemUrls.length)
+    console.log(allItemUrls)
+    // Now get resources
     await page.goto(`http://${process.env.HOST}/liberty/cataloguing/biblios/browse.do`)
     await page.locator('#navigation_message a').click()
-    const navMsg = await page.locator('#navigation_message').allInnerTexts()
+    navMsg = await page.locator('#navigation_message').allInnerTexts()
     const numResources = Number(navMsg[0].split(' ')[2])
     console.log(numResources)
     resourceNumber = 1
     await page.getByRole('link', {name: `${resourceNumber}`, exact: true}).click()
     const resources = []
-    for (let i=0;i<numResources;i++) {
+    for (let i=0;i<10;i++) {
       if (resourceNumber % 100 == 0) {
         console.log(`Processing resource ${resourceNumber}`)
       }
@@ -55,23 +79,18 @@ test('Fetch Resources', async ({page}) => {
           acc[row[0]] = row[1]
           return acc
         }, {} as Record<string, string>))
+      if (resources.at(-1).Author === 'Escott, John') {
+        console.log(cells)
+        3
+      }
       await nextResource(page)
     }
     console.log(`Writing ${resources.length} resources to CSV`)
     const csv = new ObjectsToCsv(resources.map(cell => ({
-      id: cell.ID,
       title: cell.Title,
       author: cell.Author,
       type: cell.GMD,
-      isbn: cell.ISBN,
-      notes: cell.Notes,
-      genres: cell.Genres,
-      date: cell.Date,
-      abstract: cell.Abstract,
-      subjects: cell.Subjects,
-      description: cell.Description,
-      publisher: cell.Publisher,
-      place: cell.Place,
+      resourceBox: cell['In Resource Box'],
       classification: cell.Classification,
       barcodes: getBarcodes(cell).join('|')
     })).filter(resource => resource.barcodes.length != 0))
