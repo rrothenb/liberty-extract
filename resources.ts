@@ -38,16 +38,13 @@ test('Fetch Resources', async ({page}) => {
     await page.locator('#issueSearchForm_queryTerm').press('Enter')
     await page.locator('#navigation_message a').click()
     let navMsg = await page.locator('#navigation_message').allInnerTexts()
-    console.log(navMsg)
     let numBoxsets = Number(navMsg[0].split(' ')[2])
     console.log(numBoxsets)
     let allItemUrls: string[] = []
-    console.log('collecting links...')
     while (numBoxsets > 0) {
       const itemUrls = await page
         .locator('tr:nth-child(even) td:first-child a')
         .evaluateAll(els => (els as HTMLAnchorElement[]).map(e => e.href))
-      console.log(itemUrls.length)
       allItemUrls = allItemUrls.concat(itemUrls)
       numBoxsets -= 20
       if (numBoxsets > 0) {
@@ -55,7 +52,14 @@ test('Fetch Resources', async ({page}) => {
       }
     }
     console.log(allItemUrls.length)
-    console.log(allItemUrls)
+    const boxsetMap: Record<string, string> = {}
+    for (const itemUrl of allItemUrls) {
+      await page.goto(itemUrl)
+      const boxBarcode = (await page.locator('th:text-is("Barcode:") + td a').allInnerTexts())[0]
+      for (const itemBarcode of await page.locator('td[data-property=barcode]').allInnerTexts()) {
+        boxsetMap[itemBarcode] = boxBarcode
+      }
+    }
     // Now get resources
     await page.goto(`http://${process.env.HOST}/liberty/cataloguing/biblios/browse.do`)
     await page.locator('#navigation_message a').click()
@@ -65,7 +69,7 @@ test('Fetch Resources', async ({page}) => {
     resourceNumber = 1
     await page.getByRole('link', {name: `${resourceNumber}`, exact: true}).click()
     const resources = []
-    for (let i=0;i<10;i++) {
+    for (let i=0;i<numResources;i++) {
       if (resourceNumber % 100 == 0) {
         console.log(`Processing resource ${resourceNumber}`)
       }
@@ -79,20 +83,17 @@ test('Fetch Resources', async ({page}) => {
           acc[row[0]] = row[1]
           return acc
         }, {} as Record<string, string>))
-      if (resources.at(-1).Author === 'Escott, John') {
-        console.log(cells)
-        3
-      }
       await nextResource(page)
     }
     console.log(`Writing ${resources.length} resources to CSV`)
     const csv = new ObjectsToCsv(resources.map(cell => ({
+      id: cell.ID,
       title: cell.Title,
       author: cell.Author,
       type: cell.GMD,
-      resourceBox: cell['In Resource Box'],
       classification: cell.Classification,
-      barcodes: getBarcodes(cell).join('|')
+      barcodes: getBarcodes(cell).join('|'),
+      resourceBox: getBarcodes(cell).reduce((previousValue, currentValue) => ({...previousValue, [currentValue]: boxsetMap[currentValue]}),{})
     })).filter(resource => resource.barcodes.length != 0))
     await csv.toDisk('resources.csv')
   } finally {
