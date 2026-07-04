@@ -1,4 +1,4 @@
-import {test, Page} from '@playwright/test'
+import {test, expect, Page} from '@playwright/test'
 import ObjectsToCsv from 'objects-to-csv'
 
 let resourceNumber = 0
@@ -22,6 +22,40 @@ function getBarcodes(resource: any): string[] {
     index++
   }
   return barcodes
+}
+
+function parseResource(cells: string[]): Record<string, string> {
+  return cells
+    .filter(cell => cell.includes(':') || cell.match(/^[0-9]+\n/))
+    .map(cell => cell.split(/:\t|\n/).map(part => part.trim()))
+    .filter(row => row[1].length > 1)
+    .reduce((acc, row) => {
+      acc[row[0]] = row[1]
+      return acc
+    }, {} as Record<string, string>)
+}
+
+// Reading the detail panel immediately after clicking "next" is racy: the panel
+// updates asynchronously, and its barcode rows are appended after the header
+// fields. A read taken mid-render yields empty barcodes, and the resource is
+// then silently dropped by the barcodes filter. Wait until (1) the displayed
+// record's ID differs from the previously read one, so we're off the old
+// record, and (2) the detail table stops growing, so every barcode row has
+// arrived, before reading.
+async function readResource(page: Page, previousId: string | undefined): Promise<Record<string, string>> {
+  await expect
+    .poll(async () => parseResource(await page.locator('tr').allInnerTexts()).ID, {timeout: 25000})
+    .not.toBe(previousId)
+  let previousRowCount = -1
+  await expect
+    .poll(async () => {
+      const count = await page.locator('tr').count()
+      const stable = count === previousRowCount
+      previousRowCount = count
+      return stable
+    }, {intervals: [150], timeout: 25000})
+    .toBe(true)
+  return parseResource(await page.locator('tr').allInnerTexts())
 }
 
 test('Fetch Resources', async ({page}) => {
@@ -69,20 +103,14 @@ test('Fetch Resources', async ({page}) => {
     resourceNumber = 1
     await page.getByRole('link', {name: `${resourceNumber}`, exact: true}).click()
     const resources = []
+    let previousId: string | undefined
     for (let i=0;i<numResources;i++) {
       if (resourceNumber % 100 == 0) {
         console.log(`Processing resource ${resourceNumber}`)
       }
-      // Print text from specific elements (e.g., all table cells)
-      const cells = await page.locator('tr').allInnerTexts()
-      resources.push(cells
-        .filter(cell => cell.includes(':') || cell.match(/^[0-9]+\n/))
-        .map(cell => cell.split(/:\t|\n/).map(part => part.trim()))
-        .filter(row => row[1].length > 1)
-        .reduce((acc, row) => {
-          acc[row[0]] = row[1]
-          return acc
-        }, {} as Record<string, string>))
+      const resource = await readResource(page, previousId)
+      resources.push(resource)
+      previousId = resource.ID
       await nextResource(page)
     }
     console.log(`Writing ${resources.length} resources to CSV`)

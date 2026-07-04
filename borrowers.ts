@@ -46,7 +46,7 @@ test('Fetch Borrowers', async ({page}) => {
       await nextBorrower(page)
     }
     console.log(`Writing ${borrowers.length} borrowers to CSV`)
-    const csv = new ObjectsToCsv(borrowers.filter(borrower => borrower.Name).filter(borrower => borrower['Expiry date'] && parse(borrower['Expiry date'], 'MMMM dd, yyyy', new Date(), { locale: fr }).getFullYear() >= 2020).map(cell => {
+    const csv = new ObjectsToCsv(borrowers.filter(borrower => borrower.Name).filter(borrower => borrower['Expiry date']).map(cell => {
       const expiryDate = parse(cell['Expiry date'], `MMMM dd, yyyy`, new Date(), {locale: fr})
       const memberSince = parse(cell['Member since'], `MMMM dd, yyyy`, new Date(), {locale: fr})
       return {
